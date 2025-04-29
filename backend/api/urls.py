@@ -7,4 +7,5 @@ urlpatterns = [
     path('predict/', views.predict, name='predict'),
     path('recordings/', views.recordings, name='recordings'),
     path('recordings/<int:recording_id>/', views.recording_detail, name='recording_detail'),
+    path('health/', views.health_check, name='health_check'),
 ]
