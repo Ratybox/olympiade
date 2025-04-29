@@ -3,9 +3,10 @@ from . import views
 from django.urls import include
 
 urlpatterns = [
-    path('upload/', views.upload, name='upload'),
-    path('predict/', views.predict, name='predict'),
-    path('recordings/', views.recordings, name='recordings'),
-    path('recordings/<int:recording_id>/', views.recording_detail, name='recording_detail'),
-    path('health/', views.health_check, name='health_check'),
+    path('upload/', views.upload, name='api-upload'),
+    path('predict/', views.predict, name='api-predict'),
+    path('predict-updrs/', views.predict_updrs, name='api-predict-updrs'),
+    path('recordings/', views.recordings, name='api-recordings'),
+    path('recordings/<str:recording_id>/', views.recording_detail, name='api-recording-detail'),
+    path('health/', views.health_check, name='api-health'),
 ]
