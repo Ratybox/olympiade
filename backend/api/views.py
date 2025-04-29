@@ -10,7 +10,7 @@ from scipy.io import wavfile
 import librosa
 import joblib
 
-# Modèle de machine learning (à remplacer par votre modèle réel)
+# Modèle de machine learning (à remplacer)
 model = None
 
 @csrf_exempt
@@ -42,14 +42,11 @@ def predict(request):
     try:
         audio_file = request.FILES['audio']
         
-        # Charger l'audio
         y, sr = librosa.load(audio_file, sr=None)
         
-        # Extraire les caractéristiques
         mfccs = librosa.feature.mfcc(y=y, sr=sr)
         mfccs_mean = np.mean(mfccs, axis=1)
         
-        # Faire la prédiction (exemple simplifié)
         prediction = model.predict([mfccs_mean])[0] if model else 0
         
         return JsonResponse({
