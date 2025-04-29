@@ -12,10 +12,11 @@ import joblib
 import traceback
 
 # Import de nos fonctions d'IA
-from .utils import predict_parkinsons
+from .utils import predict_parkinsons, predict_updrs_score
 
-# Chemin du modèle
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_knn_model.pkl')
+# Chemins des modèles
+KNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_knn_model.pkl')
+RF_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_rf_model.pkl')
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -96,9 +97,9 @@ def predict(request):
             for chunk in audio_file.chunks():
                 destination.write(chunk)
         
-        # Prédire avec notre modèle
+        # Prédire avec notre modèle KNN (classification binaire)
         try:
-            prediction, confidence = predict_parkinsons(temp_path, MODEL_PATH)
+            prediction, confidence = predict_parkinsons(temp_path, KNN_MODEL_PATH)
             
             # Interpréter la prédiction
             result = "Parkinson détecté" if prediction == 1 else "Sain"
@@ -134,6 +135,78 @@ def predict(request):
             'message': str(e),
             'stack_trace': traceback.format_exc()
         }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def predict_updrs(request):
+    """Prédire le score UPDRS moteur pour évaluer la sévérité de Parkinson"""
+    try:
+        # Vérifier si un fichier audio est présent
+        if 'audio' not in request.FILES:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Aucun fichier audio fourni'
+            }, status=400)
+            
+        audio_file = request.FILES['audio']
+        
+        # Enregistrer temporairement le fichier
+        temp_path = os.path.join('temp', f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
+        os.makedirs('temp', exist_ok=True)
+        
+        with open(temp_path, 'wb+') as destination:
+            for chunk in audio_file.chunks():
+                destination.write(chunk)
+        
+        # Prédire avec notre modèle RandomForest (régression)
+        try:
+            result = predict_updrs_score(temp_path, RF_MODEL_PATH)
+            
+            # Ajouter des informations supplémentaires à la réponse
+            response_data = {
+                'status': 'success',
+                'updrs_score': round(result['updrs_score'], 2),
+                'severity': result['severity'],
+                'severity_code': result['severity_code'],
+                'explanation': get_severity_explanation(result['severity_code']),
+                'top_features': result['top_features'],
+                'model_info': result['model_info'],
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            # En cas d'erreur de prédiction, capturer l'erreur
+            error_msg = f"Erreur lors de la prédiction UPDRS: {str(e)}"
+            stack_trace = traceback.format_exc()
+            response_data = {
+                'status': 'error',
+                'message': error_msg,
+                'stack_trace': stack_trace
+            }
+        finally:
+            # Nettoyer le fichier temporaire
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        
+        return JsonResponse(response_data, status=200 if response_data['status'] == 'success' else 500)
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'stack_trace': traceback.format_exc()
+        }, status=500)
+
+def get_severity_explanation(severity_code):
+    """Retourne une explication détaillée du niveau de sévérité"""
+    explanations = {
+        0: "Aucun symptôme significatif ou symptômes très légers. Les activités quotidiennes ne sont pas affectées.",
+        1: "Symptômes légers. Quelques difficultés dans les mouvements fins, mais les activités quotidiennes restent largement indépendantes.",
+        2: "Symptômes modérés. Difficultés notables dans la motricité, la parole peut être affectée. Une assistance occasionnelle peut être nécessaire.",
+        3: "Symptômes sévères. Mobilité significativement réduite, difficultés importantes dans la parole et les activités quotidiennes. Une assistance régulière est recommandée."
+    }
+    return explanations.get(severity_code, "Niveau de sévérité non reconnu.")
 
 @require_http_methods(["GET"])
 def recordings(request):
@@ -184,18 +257,30 @@ def health_check(request):
         # Vérifier si le dossier recordings existe
         os.makedirs('recordings', exist_ok=True)
         
-        # Vérifier si le modèle est chargé
-        model_exists = os.path.exists(MODEL_PATH)
-        model_size = os.path.getsize(MODEL_PATH) if model_exists else 0
+        # Vérifier si les modèles sont chargés
+        knn_model_exists = os.path.exists(KNN_MODEL_PATH)
+        knn_model_size = os.path.getsize(KNN_MODEL_PATH) if knn_model_exists else 0
+        
+        rf_model_exists = os.path.exists(RF_MODEL_PATH)
+        rf_model_size = os.path.getsize(RF_MODEL_PATH) if rf_model_exists else 0
         
         return JsonResponse({
             'status': 'success',
             'message': 'API en bonne santé',
-            'model_loaded': model_exists,
-            'model_path': MODEL_PATH,
-            'model_size': model_size,
+            'models': {
+                'knn': {
+                    'loaded': knn_model_exists,
+                    'path': KNN_MODEL_PATH,
+                    'size': knn_model_size
+                },
+                'rf': {
+                    'loaded': rf_model_exists,
+                    'path': RF_MODEL_PATH,
+                    'size': rf_model_size
+                }
+            },
             'timestamp': datetime.now().isoformat(),
-            'version': '1.0.0'
+            'version': '1.1.0'
         })
     except Exception as e:
         return JsonResponse({
