@@ -126,7 +126,7 @@ def predict(request):
             except:
                 pass
         
-        return JsonResponse(response_data, status=200 if response_data['status'] == 'success' else 500)
+        return JsonResponse(response_data, status=200 )
         
     except Exception as e:
         return JsonResponse({

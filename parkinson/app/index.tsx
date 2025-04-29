@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet, Image } from "react-native";
 import { Audio } from "expo-av";
 import { Recording, Sound } from "expo-av/build/Audio";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
 
@@ -22,9 +23,14 @@ const RecordingButton = () => {
   const [recordedURI, setRecordedURI] = useState<null | string>(null);
   const [sound, setSound] = useState<null | Sound>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [uploadResult, setUploadResult] = useState<null | string>(null);
+  const [uploadError, setUploadError] = useState<null | string>(null);
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
+
+  // const progressBarColor = result === "good" ? "#4CAF50" : "#F44336"; // green or red
+  // const progressBarWidth = confidence * (screenWidth - 40); // minus padding
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
@@ -51,7 +57,8 @@ const RecordingButton = () => {
         -1,
         true
       );
-
+      setUploadError(null);
+      setUploadResult(null);
       console.log("Requesting permissions..");
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({
@@ -60,6 +67,23 @@ const RecordingButton = () => {
       });
 
       console.log("Starting recording..");
+      // const { recording } = await Audio.Recording.createAsync({
+      //   android: {
+      //     extension: ".wav",
+      //     outputFormat: Audio.AndroidOutputFormat.PCM_16BIT,
+      //     audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+      //   },
+      //   ios: {
+      //     extension: ".wav",
+      //     outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+      //     audioQuality: Audio.IOSAudioQuality.MAX,
+      //     sampleRate: 44100,
+      //     numberOfChannels: 1,
+      //     bitRate: 128000,
+      //   },
+      //   web: {},
+      // });
+
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -107,6 +131,12 @@ const RecordingButton = () => {
         },
         timeout: 5000,
       });
+
+      setUploadResult(
+        response.data.prediction == 1
+          ? "Parkinson detected"
+          : "No Parkinson detected"
+      );
 
       console.log("Upload result:", response.data);
       setRecordingStatus("Upload successful!");
@@ -191,27 +221,91 @@ const RecordingButton = () => {
   }, [sound]);
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={["#4076FF", "#ffffff"]}
+      style={styles.container}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 0.4 }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          width: "100%",
+          flexDirection: "row",
+          alignItems: "center",
+          padding: 10,
+          gap: 10,
+          backgroundColor: "transparent",
+        }}
+      >
+        <Image
+          source={require("@/assets/images/parka.png")}
+          style={{ width: 28, height: 28 }}
+        />
+        <Text style={{ fontSize: 24, fontWeight: 600, color: "white" }}>
+          Parka
+        </Text>
+      </View>
       <Text
-        style={{ position: "absolute", top: 20, fontSize: 24, fontWeight: 700 }}
+        style={{
+          position: "absolute",
+          left: 10,
+          color: "white",
+          top: 60,
+          fontSize: 36,
+          fontWeight: 500,
+        }}
       >
         Parkinson Disease Detector
       </Text>
-      <TouchableOpacity onPress={isRecording ? stopRecording : startRecording}>
+      <Text
+        style={{
+          position: "absolute",
+          left: 10,
+          color: "white",
+          top: 160,
+          fontSize: 18,
+          fontWeight: 500,
+        }}
+      >
+        Press the button below to see if you have parkison
+      </Text>
+      <TouchableOpacity
+        onPress={isRecording ? stopRecording : startRecording}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         {isRecording ? (
-          <AnimatedMaterialIcons
-            name="keyboard-voice"
-            size={40}
-            color="white"
-            style={[
-              {
-                backgroundColor: "red",
-                padding: 16,
-                borderRadius: 50,
-              },
-              animatedStyles,
-            ]}
-          />
+          <>
+            <Text
+              style={{
+                position: "absolute",
+                top: -50,
+                color: "white",
+                fontSize: 24,
+                textAlign: "center",
+              }}
+            >
+              Say "AAAAA"
+            </Text>
+            <AnimatedMaterialIcons
+              name="keyboard-voice"
+              size={40}
+              color="white"
+              style={[
+                {
+                  backgroundColor: "red",
+                  padding: 16,
+                  borderRadius: 50,
+                },
+                animatedStyles,
+              ]}
+            />
+          </>
         ) : (
           <MaterialIcons
             name="keyboard-voice"
@@ -257,8 +351,24 @@ const RecordingButton = () => {
         </TouchableOpacity>
       )}
 
-      <Text style={styles.statusText}>{recordingStatus}</Text>
-    </View>
+      <Text style={styles.statusText}>{uploadResult}</Text>
+      {/* <>
+          <Text style={styles.resultText}>
+            Sentiment: {result} ({Math.round(confidence * 100)}%)
+          </Text>
+          <View style={styles.progressBarBackground}>
+            <Animated.View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: progressBarWidth,
+                  backgroundColor: progressBarColor,
+                },
+              ]}
+            />
+          </View>
+        </> */}
+    </LinearGradient>
   );
 };
 
@@ -269,7 +379,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 20,
     backgroundColor: "white",
-    padding: 20,
   },
   button: {
     padding: 15,
@@ -296,6 +405,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     textAlign: "center",
+  },
+  resultText: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  progressBarBackground: {
+    width: "100%",
+    height: 16,
+    backgroundColor: "#eee",
+    borderRadius: 8,
+    marginTop: 10,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 8,
   },
 });
 
