@@ -9,9 +9,13 @@ import numpy as np
 from scipy.io import wavfile
 import librosa
 import joblib
+import traceback
 
-# Modèle de machine learning (à remplacer)
-model = None
+# Import de nos fonctions d'IA
+from .utils import predict_parkinsons
+
+# Chemin du modèle
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_knn_model.pkl')
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -75,25 +79,61 @@ def upload(request):
 @require_http_methods(["POST"])
 def predict(request):
     try:
+        # Vérifier si un fichier audio est présent
+        if 'audio' not in request.FILES:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Aucun fichier audio fourni'
+            }, status=400)
+            
         audio_file = request.FILES['audio']
         
-        y, sr = librosa.load(audio_file, sr=None)
+        # Enregistrer temporairement le fichier
+        temp_path = os.path.join('temp', f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
+        os.makedirs('temp', exist_ok=True)
         
-        mfccs = librosa.feature.mfcc(y=y, sr=sr)
-        mfccs_mean = np.mean(mfccs, axis=1)
+        with open(temp_path, 'wb+') as destination:
+            for chunk in audio_file.chunks():
+                destination.write(chunk)
         
-        prediction = model.predict([mfccs_mean])[0] if model else 0
+        # Prédire avec notre modèle
+        try:
+            prediction, confidence = predict_parkinsons(temp_path, MODEL_PATH)
+            
+            # Interpréter la prédiction
+            result = "Parkinson détecté" if prediction == 1 else "Sain"
+            
+            response_data = {
+                'status': 'success',
+                'prediction': int(prediction),
+                'result': result,
+                'confidence': float(confidence),
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            # En cas d'erreur de prédiction, capturer l'erreur
+            error_msg = f"Erreur lors de la prédiction: {str(e)}"
+            stack_trace = traceback.format_exc()
+            response_data = {
+                'status': 'error',
+                'message': error_msg,
+                'stack_trace': stack_trace
+            }
+        finally:
+            # Nettoyer le fichier temporaire
+            try:
+                os.remove(temp_path)
+            except:
+                pass
         
-        return JsonResponse({
-            'status': 'success',
-            'prediction': float(prediction),
-            'confidence': 0.95  # À remplacer par la vraie confiance du modèle
-        })
+        return JsonResponse(response_data, status=200 if response_data['status'] == 'success' else 500)
+        
     except Exception as e:
         return JsonResponse({
             'status': 'error',
-            'message': str(e)
-        }, status=400)
+            'message': str(e),
+            'stack_trace': traceback.format_exc()
+        }, status=500)
 
 @require_http_methods(["GET"])
 def recordings(request):
@@ -102,7 +142,7 @@ def recordings(request):
         if not os.path.exists(recordings_dir):
             os.makedirs(recordings_dir)
             
-        files = [f for f in os.listdir(recordings_dir) if f.endswith('.wav')]
+        files = [f for f in os.listdir(recordings_dir) if any(f.endswith(ext) for ext in ['.wav', '.mp3', '.m4a'])]
         return JsonResponse({
             'status': 'success',
             'recordings': files
@@ -144,9 +184,16 @@ def health_check(request):
         # Vérifier si le dossier recordings existe
         os.makedirs('recordings', exist_ok=True)
         
+        # Vérifier si le modèle est chargé
+        model_exists = os.path.exists(MODEL_PATH)
+        model_size = os.path.getsize(MODEL_PATH) if model_exists else 0
+        
         return JsonResponse({
             'status': 'success',
             'message': 'API en bonne santé',
+            'model_loaded': model_exists,
+            'model_path': MODEL_PATH,
+            'model_size': model_size,
             'timestamp': datetime.now().isoformat(),
             'version': '1.0.0'
         })
