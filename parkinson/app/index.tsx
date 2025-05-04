@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Image } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Image,
+  Dimensions,
+} from "react-native";
 import { Audio } from "expo-av";
 import { Recording, Sound } from "expo-av/build/Audio";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
@@ -15,6 +22,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
+const screenWidth = Dimensions.get("window").width;
 
 const RecordingButton = () => {
   const [recording, setRecording] = useState<null | Recording>(null);
@@ -25,12 +33,16 @@ const RecordingButton = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadResult, setUploadResult] = useState<null | string>(null);
   const [uploadError, setUploadError] = useState<null | string>(null);
+  const [result, setResult] = useState<any | null>(null);
+  const [confidence, setConfidence] = useState<number>(0);
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
-  // const progressBarColor = result === "good" ? "#4CAF50" : "#F44336"; // green or red
-  // const progressBarWidth = confidence * (screenWidth - 40); // minus padding
+  const progressBarColor = result?.severity === "" ? "#F44336" : "#4CAF50"; // green or red
+  const progressBarWidth = Math.round(
+    ((result?.updrs_score - 5) / (45 - 5)) * (screenWidth - 40)
+  );
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
@@ -57,6 +69,7 @@ const RecordingButton = () => {
         -1,
         true
       );
+      setResult(null);
       setUploadError(null);
       setUploadResult(null);
       console.log("Requesting permissions..");
@@ -67,26 +80,26 @@ const RecordingButton = () => {
       });
 
       console.log("Starting recording..");
-      // const { recording } = await Audio.Recording.createAsync({
-      //   android: {
-      //     extension: ".wav",
-      //     outputFormat: Audio.AndroidOutputFormat.PCM_16BIT,
-      //     audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-      //   },
-      //   ios: {
-      //     extension: ".wav",
-      //     outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-      //     audioQuality: Audio.IOSAudioQuality.MAX,
-      //     sampleRate: 44100,
-      //     numberOfChannels: 1,
-      //     bitRate: 128000,
-      //   },
-      //   web: {},
-      // });
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: ".wav",
+          outputFormat: Audio.AndroidOutputFormat.PCM_16BIT,
+          audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+        },
+        ios: {
+          extension: ".wav",
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.MAX,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+        },
+        web: {},
+      });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // const { recording } = await Audio.Recording.createAsync(
+      //   Audio.RecordingOptionsPresets.HIGH_QUALITY
+      // );
 
       setRecording(recording);
       setIsRecording(true);
@@ -125,18 +138,14 @@ const RecordingButton = () => {
 
       formData.append("timestamp", new Date().toISOString());
 
-      const response = await axios.post("/upload/", formData, {
+      const response = await axios.post("/predict-updrs/", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         timeout: 5000,
       });
 
-      setUploadResult(
-        response.data.prediction == 1
-          ? "Parkinson detected"
-          : "No Parkinson detected"
-      );
+      setResult(response.data);
 
       console.log("Upload result:", response.data);
       setRecordingStatus("Upload successful!");
@@ -285,7 +294,6 @@ const RecordingButton = () => {
               style={{
                 position: "absolute",
                 top: -50,
-                color: "white",
                 fontSize: 24,
                 textAlign: "center",
               }}
@@ -352,9 +360,19 @@ const RecordingButton = () => {
       )}
 
       <Text style={styles.statusText}>{uploadResult}</Text>
-      {/* <>
+      {result && (
+        <View
+          style={{
+            paddingHorizontal: 20,
+            width: "100%",
+            position: "absolute",
+            bottom: 100,
+            paddingBottom: 20,
+          }}
+        >
           <Text style={styles.resultText}>
-            Sentiment: {result} ({Math.round(confidence * 100)}%)
+            Parkinson: {result?.severity} (
+            {Math.round(((result?.updrs_score - 5) / (45 - 5)) * 100)}%)
           </Text>
           <View style={styles.progressBarBackground}>
             <Animated.View
@@ -367,7 +385,11 @@ const RecordingButton = () => {
               ]}
             />
           </View>
-        </> */}
+          <Text style={{ paddingVertical: 10, fontSize: 16, padding: 10, backgroundColor: "#00000010", marginTop: 10 }}>
+            {result?.explanation}
+          </Text>
+        </View>
+      )}
     </LinearGradient>
   );
 };
@@ -423,6 +445,7 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 8,
+    padding: 10,
   },
 });
 

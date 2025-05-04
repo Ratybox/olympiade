@@ -19,7 +19,7 @@ print("🧠 Création d'un modèle de régression UPDRS pour Parkinson 🧠")
 # -- 2. CHARGEMENT ET EXPLORATION DES DONNÉES --
 print("\n📊 Chargement du dataset...")
 # Chemin du fichier de données
-data_path = "/Users/wshwsh/Downloads/park.data.csv"
+data_path = "park.data.csv"
 
 # Vérifier si le fichier existe
 if not os.path.exists(data_path):
