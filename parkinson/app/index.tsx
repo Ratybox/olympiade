@@ -29,6 +29,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import DrawParkinsonSpiral from "@/components/DrawParkinsonSpiral";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -368,35 +369,48 @@ const RecordingButton = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <View style={styles.logoCircle} />
-          <Text style={styles.logoText}>Habyeb</Text>
+          <Image source={require("@/assets/images/LogoHabayed.png")} style={{width: 16, height: 16}} />
+          <Text style={styles.logoText}>Habayeb</Text>
         </View>
       </View>
 
       {/* Main Content */}
       <View style={styles.content}>
-        <Text style={styles.mainTitle}>Health Check</Text>
-        <Text style={styles.subtitle}>{STEPS[currentStep].title}</Text>
+        <View
+          style={{
+            position: "absolute",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={styles.mainTitle}>Health Check</Text>
+          <Text style={styles.subtitle}>{STEPS[currentStep].title}</Text>
+          <View style={styles.stepIndicator}>
+            {STEPS.map((step, index) => (
+              <View
+                key={step.id}
+                style={[
+                  styles.stepDot,
+                  index === currentStep && styles.activeStepDot,
+                ]}
+              />
+            ))}
+          </View>
 
-        <View style={styles.stepIndicator}>
-          {STEPS.map((step, index) => (
-            <View
-              key={step.id}
-              style={[
-                styles.stepDot,
-                index === currentStep && styles.activeStepDot,
-              ]}
-            />
-          ))}
+          {currentStep == 0 &&
+            (isRecording ? (
+              <Text style={styles.instruction}>
+                {STEPS[currentStep].instruction}
+              </Text>
+            ) : (
+              <Text style={styles.instruction}>
+                Take a deep breath and begin
+              </Text>
+            ))}
+
+          {currentStep == 1 && <DrawParkinsonSpiral />}
         </View>
-
-        {isRecording ? (
-          <Text style={styles.instruction}>
-            {STEPS[currentStep].instruction}
-          </Text>
-        ) : (
-          <Text style={styles.instruction}>Take a deep breath and begin</Text>
-        )}
 
         {/* {recordedURI && (
           <TouchableOpacity
@@ -443,23 +457,25 @@ const RecordingButton = () => {
           <MaterialIcons name="keyboard-voice" size={40} color="#222" />
         </TouchableOpacity>
       </View> */}
-      <View style={styles.micWrapper}>
-        <TouchableOpacity
-          onPress={isRecording ? stopRecording : startRecording}
-          style={styles.micButton}
-        >
-          {isRecording ? (
-            <AnimatedMaterialIcons
-              name="keyboard-voice"
-              size={40}
-              color="white"
-              style={[styles.recordIcon, animatedStyles]}
-            />
-          ) : (
-            <MaterialIcons name="keyboard-voice" size={40} color="#222" />
-          )}
-        </TouchableOpacity>
-      </View>
+      {currentStep == 0 && (
+        <View style={styles.micWrapper}>
+          <TouchableOpacity
+            onPress={isRecording ? stopRecording : startRecording}
+            style={styles.micButton}
+          >
+            {isRecording ? (
+              <AnimatedMaterialIcons
+                name="keyboard-voice"
+                size={40}
+                color="white"
+                style={[styles.recordIcon, animatedStyles]}
+              />
+            ) : (
+              <MaterialIcons name="keyboard-voice" size={40} color="#222" />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Next Button */}
       <View style={styles.nextPreviousWrapper}>
@@ -557,6 +573,7 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   logoCircle: {
     width: 20,
@@ -569,6 +586,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
+    fontFamily: 'Poppins-Regular',
     fontWeight: "700",
     color: "#222",
     letterSpacing: 0.5,
@@ -675,10 +693,13 @@ const styles = StyleSheet.create({
   },
   micWrapper: {
     flex: 1,
-    marginTop: 40,
+    position: "absolute",
+    left: "50%",
+    bottom: 220,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
+    transform: [{ translateX: "-50%" }], // Using transform to move left by 50%
   },
   micButton: {
     width: 76,
@@ -700,7 +721,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   nextPreviousWrapper: {
-    flex: 1,
+    position: "absolute",
+    bottom: 16,
     width: "100%",
     maxHeight: 64,
     display: "flex",
@@ -709,7 +731,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 8,
-    marginBottom: 32,
     zIndex: 2,
   },
   nextButton: {
