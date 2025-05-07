@@ -198,7 +198,11 @@ export default () => {
             style={{ padding: 12 }}
             onPress={handleSubmitButtonClick}
           >
-            <MaterialIcons name="check" size={24} color="white" />
+            {loading ? (
+              <ActivityIndicator size={24} color="white" />
+            ) : (
+              <MaterialIcons name="check" size={24} color="white" />
+            )}
           </Pressable>
         </View>
       </View>

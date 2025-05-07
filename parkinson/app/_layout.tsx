@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
+import DrawerLayout from "@/components/DrawerLayout";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -31,9 +32,9 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
   const [fontsLoaded] = useFonts({
-    'Poppins-Regular': require('../assets/fonts/Poppins/Poppins-Regular.ttf'),
-    'Poppins-Bold': require('../assets/fonts/Poppins/Poppins-Bold.ttf'),
-    'Poppins-Italic': require('../assets/fonts/Poppins/Poppins-Italic.ttf'),
+    "Poppins-Regular": require("../assets/fonts/Poppins/Poppins-Regular.ttf"),
+    "Poppins-Bold": require("../assets/fonts/Poppins/Poppins-Bold.ttf"),
+    "Poppins-Italic": require("../assets/fonts/Poppins/Poppins-Italic.ttf"),
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -51,7 +52,11 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <DrawerLayout>
+      <RootLayoutNav />
+    </DrawerLayout>
+  );
 }
 
 function RootLayoutNav() {
@@ -61,6 +66,8 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="maps" options={{ headerShown: false }} />
+        <Stack.Screen name="habayeb" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
