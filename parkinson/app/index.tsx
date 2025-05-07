@@ -30,6 +30,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import DrawParkinsonSpiral from "@/components/DrawParkinsonSpiral";
+import { Drawer } from "react-native-drawer-layout";
+import { useNavigation } from "@react-navigation/native";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -59,6 +61,8 @@ const RecordingButton = () => {
   const [uploadError, setUploadError] = useState<null | string>(null);
   const [result, setResult] = useState<any | null>(null);
   const [confidence, setConfidence] = useState<number>(0);
+  const [open, setOpen] = useState(false);
+  const navigation = useNavigation();
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -78,6 +82,10 @@ const RecordingButton = () => {
       opacity: opacity.value,
     };
   });
+
+  const toggleDrawer = () => {
+    setOpen(!open);
+  };
 
   useEffect(() => {
     waveAnimation1.value = withRepeat(
@@ -114,45 +122,65 @@ const RecordingButton = () => {
     );
   }, []);
 
-  const waveStyle1 = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(waveAnimation1.value, [0, 1], [0, 15]),
-        },
-      ],
-    };
-  });
+  const renderDrawerContent = () => {
+    return (
+      <View style={styles.drawerContainer}>
+        <View style={styles.drawerHeader}>
+          <Image
+            source={require("@/assets/images/LogoHabayed.png")}
+            style={{ width: 24, height: 24 }}
+          />
+          <Text style={styles.drawerTitle}>Habayeb</Text>
+        </View>
 
-  const waveStyle2 = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(waveAnimation2.value, [0, 1], [0, 10]),
-        },
-      ],
-    };
-  });
+        <View style={styles.drawerItems}>
+          <TouchableOpacity
+            style={styles.drawerItem}
+            onPress={() => {
+              setOpen(false);
+              // navigation.navigate('Home');
+            }}
+          >
+            <Ionicons name="home-outline" size={24} color="#333" />
+            <Text style={styles.drawerItemText}>Home</Text>
+          </TouchableOpacity>
 
-  const waveStyle3 = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(waveAnimation3.value, [0, 1], [0, 5]),
-        },
-      ],
-    };
-  });
+          <TouchableOpacity
+            style={styles.drawerItem}
+            onPress={() => {
+              setOpen(false);
+              // navigation.navigate('HealthCheck');
+            }}
+          >
+            <FontAwesome5 name="heartbeat" size={24} color="#333" />
+            <Text style={styles.drawerItemText}>Health Check</Text>
+          </TouchableOpacity>
 
-  const floatingStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(floatingAnimation.value, [0, 1], [-10, 10]),
-        },
-      ],
-    };
-  });
+          <TouchableOpacity
+            style={styles.drawerItem}
+            onPress={() => {
+              setOpen(false);
+              // navigation.navigate('History');
+            }}
+          >
+            <Ionicons name="time-outline" size={24} color="#333" />
+            <Text style={styles.drawerItemText}>History</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            onPress={() => {
+              setOpen(false);
+              // navigation.navigate('Settings');
+            }}
+          >
+            <Ionicons name="settings-outline" size={24} color="#333" />
+            <Text style={styles.drawerItemText}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   async function startRecording() {
     try {
@@ -357,62 +385,76 @@ const RecordingButton = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#FF9757" barStyle="dark-content" />
-      {/* Layered Curved Backgrounds */}
-      <View style={styles.bgWrapper} pointerEvents="none">
-        <View style={styles.bgCurve1} />
-        <View style={styles.bgCurve2} />
-        <View style={styles.bgCurve3} />
-      </View>
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <Image source={require("@/assets/images/LogoHabayed.png")} style={{width: 16, height: 16}} />
-          <Text style={styles.logoText}>Habayeb</Text>
+    <Drawer
+      open={open}
+      onOpen={() => setOpen(true)}
+      onClose={() => setOpen(false)}
+      drawerPosition="right"
+      renderDrawerContent={renderDrawerContent}
+      drawerStyle={styles.drawer}
+    >
+      <View style={styles.container}>
+        <StatusBar backgroundColor="#FF9757" barStyle="dark-content" />
+        {/* Layered Curved Backgrounds */}
+        <View style={styles.bgWrapper} pointerEvents="none">
+          <View style={styles.bgCurve1} />
+          <View style={styles.bgCurve2} />
+          <View style={styles.bgCurve3} />
         </View>
-      </View>
 
-      {/* Main Content */}
-      <View style={styles.content}>
-        <View
-          style={{
-            position: "absolute",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={styles.mainTitle}>Health Check</Text>
-          <Text style={styles.subtitle}>{STEPS[currentStep].title}</Text>
-          <View style={styles.stepIndicator}>
-            {STEPS.map((step, index) => (
-              <View
-                key={step.id}
-                style={[
-                  styles.stepDot,
-                  index === currentStep && styles.activeStepDot,
-                ]}
-              />
-            ))}
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoRow}>
+            <Image
+              source={require("@/assets/images/LogoHabayed.png")}
+              style={{ width: 16, height: 16 }}
+            />
+            <Text style={styles.logoText}>Habayeb</Text>
+          </View>
+          <TouchableOpacity onPress={toggleDrawer} style={styles.menuButton}>
+            <Ionicons name="menu" size={28} color="#222" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.content}>
+          <View
+            style={{
+              position: "absolute",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={styles.mainTitle}>Health Check</Text>
+            <Text style={styles.subtitle}>{STEPS[currentStep].title}</Text>
+            <View style={styles.stepIndicator}>
+              {STEPS.map((step, index) => (
+                <View
+                  key={step.id}
+                  style={[
+                    styles.stepDot,
+                    index === currentStep && styles.activeStepDot,
+                  ]}
+                />
+              ))}
+            </View>
+
+            {currentStep == 0 &&
+              (isRecording ? (
+                <Text style={styles.instruction}>
+                  {STEPS[currentStep].instruction}
+                </Text>
+              ) : (
+                <Text style={styles.instruction}>
+                  Take a deep breath and begin
+                </Text>
+              ))}
+
+            {currentStep == 1 && <DrawParkinsonSpiral />}
           </View>
 
-          {currentStep == 0 &&
-            (isRecording ? (
-              <Text style={styles.instruction}>
-                {STEPS[currentStep].instruction}
-              </Text>
-            ) : (
-              <Text style={styles.instruction}>
-                Take a deep breath and begin
-              </Text>
-            ))}
-
-          {currentStep == 1 && <DrawParkinsonSpiral />}
-        </View>
-
-        {/* {recordedURI && (
+          {/* {recordedURI && (
           <TouchableOpacity
             onPress={isPlaying ? stopSound : playSound}
             style={styles.playButton}
@@ -425,7 +467,7 @@ const RecordingButton = () => {
           </TouchableOpacity>
         )} */}
 
-        {/* {result && (
+          {/* {result && (
           <View style={styles.resultContainer}>
             <Text style={styles.resultText}>
               {result?.severity} (
@@ -445,10 +487,10 @@ const RecordingButton = () => {
             <Text style={styles.explanation}>{result?.explanation}</Text>
           </View>
         )} */}
-      </View>
+        </View>
 
-      {/* Mic Button */}
-      {/* <View style={styles.micWrapper}>
+        {/* Mic Button */}
+        {/* <View style={styles.micWrapper}>
         <TouchableOpacity
           style={styles.micButton}
           onPress={isRecording ? stopRecording : startRecording}
@@ -457,73 +499,74 @@ const RecordingButton = () => {
           <MaterialIcons name="keyboard-voice" size={40} color="#222" />
         </TouchableOpacity>
       </View> */}
-      {currentStep == 0 && (
-        <View style={styles.micWrapper}>
-          <TouchableOpacity
-            onPress={isRecording ? stopRecording : startRecording}
-            style={styles.micButton}
-          >
-            {isRecording ? (
-              <AnimatedMaterialIcons
-                name="keyboard-voice"
-                size={40}
-                color="white"
-                style={[styles.recordIcon, animatedStyles]}
-              />
-            ) : (
-              <MaterialIcons name="keyboard-voice" size={40} color="#222" />
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Next Button */}
-      <View style={styles.nextPreviousWrapper}>
-        {currentStep == 1 && (
-          <View
-            style={{
-              overflow: "hidden",
-              borderRadius: 100,
-              flex: 1,
-              backgroundColor: "#2196F3",
-            }}
-          >
-            <Pressable
-              android_ripple={{
-                color: "rgba(255, 255, 255, 0.2)",
-                borderless: false,
-              }}
-              style={styles.nextButton}
-              onPress={handlePrevious}
-            >
-              <Text style={styles.nextText}>Previous</Text>
-            </Pressable>
-          </View>
-        )}
         {currentStep == 0 && (
-          <View
-            style={{
-              overflow: "hidden",
-              borderRadius: 100,
-              flex: 1,
-              backgroundColor: "#2196F3",
-            }}
-          >
-            <Pressable
-              android_ripple={{
-                color: "rgba(254, 254, 254, 0.2)",
-                borderless: false,
-              }}
-              style={styles.nextButton}
-              onPress={handleNext}
-              disabled={currentStep === STEPS.length - 1}
+          <View style={styles.micWrapper}>
+            <TouchableOpacity
+              onPress={isRecording ? stopRecording : startRecording}
+              style={styles.micButton}
             >
-              <Text style={styles.nextText}>Next</Text>
-            </Pressable>
+              {isRecording ? (
+                <AnimatedMaterialIcons
+                  name="keyboard-voice"
+                  size={40}
+                  color="white"
+                  style={[styles.recordIcon, animatedStyles]}
+                />
+              ) : (
+                <MaterialIcons name="keyboard-voice" size={40} color="#222" />
+              )}
+            </TouchableOpacity>
           </View>
         )}
+
+        {/* Next Button */}
+        <View style={styles.nextPreviousWrapper}>
+          {currentStep == 1 && (
+            <View
+              style={{
+                overflow: "hidden",
+                borderRadius: 100,
+                flex: 1,
+                backgroundColor: "#2196F3",
+              }}
+            >
+              <Pressable
+                android_ripple={{
+                  color: "rgba(255, 255, 255, 0.2)",
+                  borderless: false,
+                }}
+                style={styles.nextButton}
+                onPress={handlePrevious}
+              >
+                <Text style={styles.nextText}>Previous</Text>
+              </Pressable>
+            </View>
+          )}
+          {currentStep == 0 && (
+            <View
+              style={{
+                overflow: "hidden",
+                borderRadius: 100,
+                flex: 1,
+                backgroundColor: "#2196F3",
+              }}
+            >
+              <Pressable
+                android_ripple={{
+                  color: "rgba(254, 254, 254, 0.2)",
+                  borderless: false,
+                }}
+                style={styles.nextButton}
+                onPress={handleNext}
+                disabled={currentStep === STEPS.length - 1}
+              >
+                <Text style={styles.nextText}>Next</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </Drawer>
   );
 };
 
@@ -566,6 +609,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#E27633",
   },
   header: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 12,
     marginLeft: 24,
     zIndex: 2,
@@ -586,19 +633,20 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
-    fontFamily: 'Poppins-Regular',
     fontWeight: "700",
     color: "#222",
     letterSpacing: 0.5,
   },
   content: {
     alignItems: "center",
+    fontFamily: "Poppins-Regular",
     marginTop: 60,
     zIndex: 2,
   },
   mainTitle: {
     fontSize: 36,
     fontWeight: "800",
+    fontFamily: "Poppins-Italic",
     color: "#222",
     marginBottom: 8,
     letterSpacing: 0.2,
@@ -736,7 +784,7 @@ const styles = StyleSheet.create({
   nextButton: {
     flex: 1,
     borderRadius: 32,
-    paddingVertical: 18,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -745,6 +793,46 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     letterSpacing: 0.5,
+  },
+  menuButton: {
+    marginRight: 16,
+  },
+  drawer: {
+    width: screenWidth * 0.75,
+  },
+  drawerContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginBottom: 20,
+  },
+  drawerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: 12,
+    color: "#222",
+  },
+  drawerItems: {
+  },
+  drawerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  drawerItemText: {
+    fontSize: 16,
+    marginLeft: 15,
+    color: "#333",
   },
 });
 
