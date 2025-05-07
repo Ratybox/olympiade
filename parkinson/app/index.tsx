@@ -125,6 +125,13 @@ const RecordingButton = () => {
   const renderDrawerContent = () => {
     return (
       <View style={styles.drawerContainer}>
+        <View style={styles.drawerWrapper} pointerEvents="none">
+          <View style={styles.drawerCurve1} />
+          <View style={styles.drawerCurve2} />
+          <View style={styles.drawerCurve3} />
+          <View style={styles.drawerCurve4} />
+        </View>
+
         <View style={styles.drawerHeader}>
           <Image
             source={require("@/assets/images/LogoHabayed.png")}
@@ -141,8 +148,11 @@ const RecordingButton = () => {
               // navigation.navigate('Home');
             }}
           >
-            <Ionicons name="home-outline" size={24} color="#333" />
-            <Text style={styles.drawerItemText}>Home</Text>
+            <Image
+              source={require("@/assets/images/Habayeb.png")}
+              style={{ width: 24, height: 24 }}
+            />
+            <Text style={styles.drawerItemText}>Habayeb</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -178,6 +188,18 @@ const RecordingButton = () => {
             <Text style={styles.drawerItemText}>Settings</Text>
           </TouchableOpacity>
         </View>
+
+        {/* <Image
+          source={require("@/assets/images/Habayeb_drawer.png")}
+          style={{
+            width: 120,
+            height: 120,
+            position: "absolute",
+            bottom: 22,
+            left: "70%",
+            transform: [{ translateX: "-40%" }],
+          }}
+        /> */}
       </View>
     );
   };
@@ -581,6 +603,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
   },
+  drawerWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+    backgroundColor: "#CEFFF9",
+  },
   bgCurve1: {
     position: "absolute",
     top: "8%",
@@ -608,11 +635,47 @@ const styles = StyleSheet.create({
     borderRadius: 1000000,
     backgroundColor: "#E27633",
   },
+  drawerCurve1: {
+    position: "absolute",
+    top: "40%",
+    aspectRatio: 1,
+    left: "-50%",
+    width: "300%",
+    borderRadius: 1000000,
+    backgroundColor: "#72E264",
+  },
+  drawerCurve2: {
+    position: "absolute",
+    top: "40%",
+    aspectRatio: 1,
+    left: "-150%",
+    width: "300%",
+    borderRadius: 1000000,
+    backgroundColor: "#C6F290",
+  },
+  drawerCurve3: {
+    position: "absolute",
+    top: "50%",
+    aspectRatio: 1,
+    left: "-80%",
+    width: "300%",
+    borderRadius: 1000000,
+    backgroundColor: "#3DC456",
+  },
+  drawerCurve4: {
+    position: "absolute",
+    top: "56%",
+    aspectRatio: 1,
+    left: "-120%",
+    width: "300%",
+    borderRadius: 1000000,
+    backgroundColor: "#129F2C",
+  },
   header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 12,
     marginLeft: 24,
     zIndex: 2,
@@ -804,11 +867,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#fff",
+    overflow: "hidden",
   },
   drawerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     marginBottom: 20,
@@ -819,8 +883,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     color: "#222",
   },
-  drawerItems: {
-  },
+  drawerItems: {},
   drawerItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -830,7 +893,8 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   drawerItemText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 600,
     marginLeft: 15,
     color: "#333",
   },
