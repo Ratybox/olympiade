@@ -44,3 +44,6 @@ ENV/
 Thumbs.db 
 
 *.pkl
+*.h5
+*.zip
+data

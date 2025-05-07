@@ -592,8 +592,6 @@ const RecordingButton = () => {
   );
 };
 
-const CURVE_HEIGHT = screenHeight * 0.45;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -637,7 +635,7 @@ const styles = StyleSheet.create({
   },
   drawerCurve1: {
     position: "absolute",
-    top: "40%",
+    top: "50%",
     aspectRatio: 1,
     left: "-50%",
     width: "300%",
@@ -646,7 +644,7 @@ const styles = StyleSheet.create({
   },
   drawerCurve2: {
     position: "absolute",
-    top: "40%",
+    top: "50%",
     aspectRatio: 1,
     left: "-150%",
     width: "300%",
@@ -655,7 +653,7 @@ const styles = StyleSheet.create({
   },
   drawerCurve3: {
     position: "absolute",
-    top: "50%",
+    top: "60%",
     aspectRatio: 1,
     left: "-80%",
     width: "300%",
@@ -664,7 +662,7 @@ const styles = StyleSheet.create({
   },
   drawerCurve4: {
     position: "absolute",
-    top: "56%",
+    top: "66%",
     aspectRatio: 1,
     left: "-120%",
     width: "300%",

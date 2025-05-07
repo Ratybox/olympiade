@@ -24,7 +24,7 @@ export default () => {
   const [isClearButtonClicked, setClearButtonClicked] = useState(false);
   const svgContainerRef = useRef(null);
   const [imageUri, setImageUri] = useState<any>(null);
-  const [result, setResult] = useState<string>("Nothing");
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false); // State for loading
   const [liked, setLiked] = useState<boolean>(false);
 
@@ -41,19 +41,24 @@ export default () => {
       // Resize the image to 28x28 pixels
       const resizedImage = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 28, height: 28 } }],
+        [{ resize: { width: 224, height: 224 } }],
         { base64: true } // Get the base64 representation
       );
 
       // Extract the pixel matrix (optional, depends on your use case)
       const base64Image = resizedImage.base64;
-      console.info("28x28 Image Base64:", base64Image);
+      console.info("224x224 Image Base64:", base64Image);
 
       axios
-        .post("pca_digits/", { image: base64Image })
+        .post("parkinson/", { image: base64Image })
         .then((res) => {
-          setResult(res.data.message);
-          console.info(res.data.message);
+          setResult(res.data);
+          console.info(
+            res.data.predicted_class == 1
+              ? "You got parkinson"
+              : "You are healthy",
+            res.data
+          );
           setLoading(false);
         })
         .catch((err) => {
@@ -86,6 +91,7 @@ export default () => {
   const handleClearButtonClick = () => {
     setPaths([]);
     setCurrentPath([]);
+    setResult(null);
     setClearButtonClicked(true);
   };
 
@@ -107,23 +113,35 @@ export default () => {
           className="rounded-2xl"
         >
           {/* {paths.length == 0 && currentPath.length == 0 && <OneDigitIcon />} */}
-          {paths.length == 0 && currentPath == 0 && (
-            <Text
-              style={{
-                position: "absolute",
-                top: 10,
-                left: "50%",
-                transform: [{ translateX: "-50%" }],
-              }}
-            >
-              Draw a spiral inside this screen
-            </Text>
-          )}
+          {(paths.length == 0 && currentPath == 0) ||
+            (result && (
+              <Text
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  alignSelf: "center",
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: result
+                    ? result.predicted_class === 1
+                      ? "#DC2626" // Red for Parkinson
+                      : "#16A34A" // Green for Healthy
+                    : "#64748B", // Slate gray for neutral
+                  textAlign: "center",
+                }}
+              >
+                {result
+                  ? result.predicted_class === 1
+                    ? "Possible signs of Parkinson's detected"
+                    : "No signs of Parkinson's detected"
+                  : "Please draw a spiral on the screen"}
+              </Text>
+            ))}
           <Path
             d={paths.join("")}
             stroke={"gray"}
             fill={"transparent"}
-            strokeWidth={20}
+            strokeWidth={5}
             strokeLinejoin={"round"}
             strokeLinecap={"round"}
           />
@@ -131,7 +149,7 @@ export default () => {
             d={currentPath.join("")}
             stroke={"gray"}
             fill={"transparent"}
-            strokeWidth={15}
+            strokeWidth={3}
             strokeLinejoin={"round"}
             strokeLinecap={"round"}
           />

@@ -1,7 +1,10 @@
 from django.shortcuts import render
+from rest_framework.response import Response
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from rest_framework import status
+from rest_framework.decorators import api_view
 import json
 import os
 from datetime import datetime
@@ -10,6 +13,10 @@ from scipy.io import wavfile
 import librosa
 import joblib
 import traceback
+import base64
+from PIL import Image
+from io import BytesIO
+import tensorflow as tf
 
 # Import de nos fonctions d'IA
 from .utils import predict_parkinsons, predict_updrs_score
@@ -17,6 +24,45 @@ from .utils import predict_parkinsons, predict_updrs_score
 # Chemins des modèles
 KNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_knn_model.pkl')
 RF_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_rf_model.pkl')
+
+
+@csrf_exempt
+@api_view(['POST'])
+def parkinson(request):
+    try:
+        base64_image = request.data.get('image')
+        if not base64_image:
+            return Response({"error": "No image provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Decode the base64 image
+        image_data = base64.b64decode(base64_image)
+        image = Image.open(BytesIO(image_data)).convert('RGB')  # Ensure RGB
+        image = image.resize((224, 224))
+        image_array = np.array(image).astype(np.float32) / 255.0  # Normalize
+        image_array = np.expand_dims(image_array, axis=0)  # Shape: (1, 224, 224, 3)
+
+        parkinson_model_path = os.path.join(os.path.dirname(__file__), 'parkinson_spiral.h5')
+        print(parkinson_model_path)
+        # Load your Xception model
+        model = tf.keras.models.load_model(parkinson_model_path)  # or .keras if saved that way
+
+        # Predict
+        prediction = model.predict(image_array)[0][0]
+        predicted_class = int(prediction > 0.5)
+        print({
+            "predicted_class": predicted_class,
+            "confidence": float(prediction)
+        })
+
+        return Response({
+            "predicted_class": predicted_class,
+            "confidence": float(prediction)
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(e)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
