@@ -23,6 +23,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 const AnimatedMaterialIcons = Animated.createAnimatedComponent(MaterialIcons);
 
+
 const Habayeb = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [recording, setRecording] = useState<null | Recording>(null);
@@ -35,6 +36,9 @@ const Habayeb = () => {
   const [uploadError, setUploadError] = useState<null | string>(null);
   const [result, setResult] = useState<any | null>(null);
   const [confidence, setConfidence] = useState<number>(0);
+  const [transcription, setTranscription] = useState('');
+  const [responseText, setResponseText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -166,7 +170,7 @@ const Habayeb = () => {
         setRecordedURI(uri);
         setRecording(null);
         setRecordingStatus("Recording was successfull");
-        uploadAudio(uri!);
+        processAudio(uri!);
         // setRecordingStatus("Recording stopped and stored at: " + uri);
         // console.log("Recording stopped and stored at", uri);
       }
@@ -175,6 +179,97 @@ const Habayeb = () => {
       setRecordingStatus("Failed to stop recording");
     }
   }
+
+   const processAudio = async (uri: string) => {
+    setIsProcessing(true);
+    try {
+      // Read the file into a binary format
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      const fileUri = fileInfo.uri;
+      const fileType = 'audio/m4a';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: fileUri,
+        name: 'audio.m4a',
+        type: fileType,
+      } as any);
+      formData.append('model', 'whisper-1');
+
+      // Transcribe audio using OpenAI Whisper API
+      const transcriptionResponse = await axios.post(
+        'https://api.openai.com/v1/audio/transcriptions',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const transcribedText = transcriptionResponse.data.text;
+      setTranscription(transcribedText);
+      console.log('Transcription:', transcribedText);
+
+      // Send transcription to ChatGPT
+      const chatResponse = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a compassionate psychiatrist helping a user with mental wellbeing.',
+            },
+            { role: 'user', content: transcribedText },
+          ],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const assistantMessage = chatResponse.data.choices[0].message.content;
+      setResponseText(assistantMessage);
+      console.log('Assistant Response:', assistantMessage);
+
+      // Convert assistant message to speech using OpenAI TTS
+      const ttsResponse = await axios.post(
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: assistantMessage,
+          voice: 'nova',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+          responseType: 'arraybuffer',
+        }
+      );
+
+      // Save the audio file
+      const ttsUri = FileSystem.documentDirectory + 'response.mp3';
+      await FileSystem.writeAsStringAsync(ttsUri, Buffer.from(ttsResponse.data).toString('base64'), {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Play the audio
+      const { sound } = await Audio.Sound.createAsync({ uri: ttsUri });
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error processing audio:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   return (
     <View style={styles.container}>
