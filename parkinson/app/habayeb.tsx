@@ -74,7 +74,6 @@ const Habayeb = () => {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 5000,
       });
 
       setResult(response.data);

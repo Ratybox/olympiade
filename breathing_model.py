@@ -9,7 +9,7 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv1D, MaxPooling1
 from tensorflow.keras.optimizers import Adam
 
 # Path to the dataset
-data_path = './data'
+data_path = './asthma'
 
 # Load data
 def load_data(data_path):

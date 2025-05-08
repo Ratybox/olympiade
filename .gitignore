@@ -47,3 +47,5 @@ Thumbs.db
 *.h5
 *.zip
 data
+asthma
+*.keras

@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Audio } from "expo-av";
 import { Recording, Sound } from "expo-av/build/Audio";
@@ -64,6 +65,7 @@ const RecordingButton = () => {
   const [result, setResult] = useState<any | null>(null);
   const [confidence, setConfidence] = useState<number>(0);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
   const router = useRouter();
 
@@ -189,6 +191,7 @@ const RecordingButton = () => {
       setRecordingStatus("No recording to upload");
       return;
     }
+    setLoading(true);
 
     setRecordingStatus("Uploading...");
 
@@ -208,11 +211,10 @@ const RecordingButton = () => {
 
       formData.append("timestamp", new Date().toISOString());
 
-      const response = await axios.post("/predict-updrs/", formData, {
+      const response = await axios.post("/cough/", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 5000,
       });
 
       setResult(response.data);
@@ -222,6 +224,8 @@ const RecordingButton = () => {
     } catch (error: any) {
       console.error("Upload error:", error);
       setRecordingStatus("Upload failed: " + error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -436,7 +440,9 @@ const RecordingButton = () => {
               !isRecording && styles.micButtonRecording,
             ]}
           >
-            {isRecording ? (
+            {loading ? (
+              <ActivityIndicator size="large" color="#222" />
+            ) : isRecording ? (
               <AnimatedMaterialIcons
                 name="keyboard-voice"
                 size={40}
@@ -447,6 +453,22 @@ const RecordingButton = () => {
               <MaterialIcons name="keyboard-voice" size={40} color="#222" />
             )}
           </TouchableOpacity>
+          {result && (
+            <Text
+              style={{
+                color: result.prediction == 0 ? "#16A34A" : "#DC2626",
+                backgroundColor: "#ffffff4C",
+                padding: 10,
+                borderRadius: 6,
+                fontWeight: 500,
+                fontSize: 18
+              }}
+            >
+              {result.prediction == 0
+                ? "You are healthy"
+                : "You propably have COVID19"}
+            </Text>
+          )}
         </View>
       )}
 
@@ -707,7 +729,8 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "absolute",
     left: "50%",
-    bottom: 220,
+    gap: 20,
+    bottom: 150,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,

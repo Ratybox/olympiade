@@ -4,7 +4,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser
 import json
 import os
 from datetime import datetime
@@ -17,13 +18,167 @@ import base64
 from PIL import Image
 from io import BytesIO
 import tensorflow as tf
+from torchvision import transforms
+import tempfile
+# Set matplotlib to use a non-interactive backend before importing pyplot
+import matplotlib
+matplotlib.use('Agg')  # Use the Agg backend which doesn't require a GUI
+import matplotlib.pyplot as plt
+from sklearn import preprocessing
+import torch
+from torch.serialization import add_safe_globals, safe_globals
 
 # Import de nos fonctions d'IA
 from .utils import predict_parkinsons, predict_updrs_score
 
+import torch
+import torch.nn as nn
+
+
+class CoughVIDModel(nn.Module):
+  def __init__(self, base_model, mfcc_in_shape):
+    super().__init__()
+    self.base_model = base_model
+    self.mfcc_model = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(mfcc_in_shape[0]*mfcc_in_shape[1], 512),
+        nn.ReLU(),
+        nn.Dropout(0.2),
+        nn.Linear(512, 1000),
+        nn.ReLU(),
+        nn.Dropout(0.2),
+    )
+    self.classifier = nn.Sequential(
+        nn.Linear(2000, 1024),
+        nn.ReLU(),
+        nn.Dropout(0.2),
+        nn.Linear(1024, 512),
+        nn.ReLU(),
+        nn.Dropout(0.2),
+        nn.Linear(512, 2),
+    )
+  
+  def forward(self, img, mfcc):
+    out_1 = self.base_model(img)
+    out_2 = self.mfcc_model(mfcc)
+    out_merged = torch.cat([out_1, out_2], dim=1)
+    out = self.classifier(out_merged)
+    return out
+
 # Chemins des modèles
 KNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_knn_model.pkl')
 RF_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'parkinsons_rf_model.pkl')
+COUGH_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'cough.h5')
+
+# Add CoughVIDModel to safe globals
+add_safe_globals([CoughVIDModel])
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser])
+def detect_cough(request):
+    if 'audio' not in request.FILES:
+        return Response({"error": "Audio file missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+    audio_file = request.FILES['audio']
+
+    # Save audio file to a temporary location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_audio:
+        for chunk in audio_file.chunks():
+            tmp_audio.write(chunk)
+        tmp_audio_path = tmp_audio.name
+
+    try:
+        # Extract features
+        audio_clip, sample_rate = librosa.load(tmp_audio_path)
+
+        spec = librosa.stft(audio_clip)
+        spec_mag, _ = librosa.magphase(spec)
+        mel_spec = librosa.feature.melspectrogram(S=spec_mag, sr=sample_rate)
+        log_spec = librosa.amplitude_to_db(mel_spec, ref=np.min)
+
+        # Save spectrogram to temp image
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_img:
+            fig, ax = plt.subplots(1)
+            fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+            ax.axis('tight')
+            ax.axis('off')
+            librosa.display.specshow(log_spec, sr=sample_rate)
+            fig.savefig(tmp_img.name)
+            plt.close(fig)
+            img_path = tmp_img.name
+
+        # Load and transform spectrogram image
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        img = Image.open(img_path).convert("RGB")
+        img_tensor = transform(img).unsqueeze(0)
+
+        # Process MFCC
+        mfcc = librosa.feature.mfcc(y=audio_clip, sr=sample_rate)
+        mfcc = preprocessing.scale(mfcc, axis=1)
+        mfcc_padded = np.zeros((20, 500))
+        mfcc_padded[:mfcc.shape[0], :mfcc.shape[1]] = mfcc[:, :500]
+        mfcc_tensor = torch.Tensor(mfcc_padded).unsqueeze(0)
+
+        # Load model
+        try:
+            # First create a base model (using a simple CNN as an example)
+            base_model = torch.nn.Sequential(
+                torch.nn.Conv2d(3, 64, kernel_size=3, padding=1),
+                torch.nn.ReLU(),
+                torch.nn.MaxPool2d(2),
+                torch.nn.Flatten(),
+                torch.nn.Linear(64 * 112 * 112, 1000)
+            )
+            
+            # Initialize the model with the base model
+            model = CoughVIDModel(base_model, (20, 500))
+            
+            # Try loading just the state dict first
+            try:
+                state_dict = torch.load(COUGH_MODEL_PATH, map_location='cpu', weights_only=True)
+                model.load_state_dict(state_dict)
+            except Exception as e:
+                print(f"Error loading state dict: {str(e)}")
+                # If state dict loading fails, try loading the full model
+                try:
+                    # Create a temporary module to hold the model class
+                    import types
+                    temp_module = types.ModuleType('model')
+                    temp_module.CoughVIDModel = CoughVIDModel
+                    import sys
+                    sys.modules['model'] = temp_module
+                    
+                    with safe_globals([CoughVIDModel]):
+                        model = torch.load(COUGH_MODEL_PATH, map_location='cpu', weights_only=False)
+                except Exception as e2:
+                    print(f"Error loading full model: {str(e2)}")
+                    raise
+            
+            model.eval()
+        except Exception as e:
+            print(f"Error in model loading process: {str(e)}")
+            raise
+
+        with torch.no_grad():
+            output = model(img_tensor, mfcc_tensor)
+            prediction = torch.argmax(output, dim=1).item()
+
+        result = "Healthy" if prediction == 0 else "COVID-19"
+        print('result: ', result)
+        return Response({"prediction": prediction}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(e)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    finally:
+        os.remove(tmp_audio_path)
+        if os.path.exists(img_path):
+            os.remove(img_path)
 
 
 @csrf_exempt
