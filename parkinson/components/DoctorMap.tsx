@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Dimensions, Alert } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+  Text,
+} from "react-native";
 import MapView, { UrlTile, Marker, Region } from "react-native-maps";
 import axios from "axios";
 import * as Location from "expo-location";
@@ -31,6 +38,8 @@ export default function DoctorMap() {
       latitudeDelta: 0.1,
       longitudeDelta: 0.1,
     });
+
+    console.info(latitude, longitude);
 
     fetchDoctors(latitude, longitude);
   }
@@ -69,7 +78,12 @@ export default function DoctorMap() {
 
   return (
     <View style={styles.container}>
-      {region && (
+      {!region ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Searching for the nearest doctors in your area</Text>
+        </View>
+      ) : (
         <MapView style={styles.map} initialRegion={region} provider={undefined}>
           <UrlTile
             urlTemplate="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -108,8 +122,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    backgroundColor: "white",
+    flex: 1,
+    gap: 20,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   map: {
     width: Dimensions.get("window").width,
     height: Dimensions.get("window").height,
+  },
+  loadingText: {
+    textAlign: "center",
+    fontWeight: 500,
+    fontSize: 16,
   },
 });
